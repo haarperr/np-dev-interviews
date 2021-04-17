@@ -8,11 +8,11 @@ AddEventHandler(
 
 		-- Generate the random fields to be selected
 		local firstFieldId = GetRandom(1, #VineyardFieldLocations)
-		while (not (#VineyardFieldLocations[firstFieldId]["Enabled"])) do
+		while (not (VineyardFieldLocations[firstFieldId]["Enabled"])) do
 			firstFieldId = GetRandom(1, #VineyardFieldLocations)
 		end
 		local secondFieldId = GetRandom(1, #VineyardFieldLocations)
-		while (firstFieldId == secondFieldId or not (#VineyardFieldLocations[secondFieldId]["Enabled"])) do
+		while (firstFieldId == secondFieldId or not (VineyardFieldLocations[secondFieldId]["Enabled"])) do
 			secondFieldId = GetRandom(1, #VineyardFieldLocations)
 		end
 

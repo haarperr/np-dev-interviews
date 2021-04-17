@@ -90,3 +90,32 @@ function NoPixelPlayAnimationOnPlayerPed(animDict, animName, animTimeMs, animFla
 
 	TaskPlayAnim(PlayerPedId(), animDict, animName, 1.0, 1.0, animTimeMs, animFlags, 0.5, false, false, false)
 end
+
+function NoPixelAttachEntityToPlayerPed(modelName, pedBoneIndex, offsetVector, rotationVector)
+	local modelHash = GetHashKey(modelName)
+	RequestModel(modelHash)
+	while (not HasModelLoaded(modelHash)) do
+		Citizen.Wait(0)
+	end
+
+	local objectEntity = CreateObject(modelHash, 0.0, 0.0, 0.0, true, false, false)
+	AttachEntityToEntity(
+		objectEntity,
+		PlayerPedId(),
+		GetPedBoneIndex(PlayerPedId(), pedBoneIndex),
+		offsetVector.x,
+		offsetVector.y,
+		offsetVector.z,
+		rotationVector.x,
+		rotationVector.y,
+		rotationVector.z,
+		1,
+		1,
+		0,
+		true,
+		2,
+		1
+	)
+
+	return objectEntity
+end

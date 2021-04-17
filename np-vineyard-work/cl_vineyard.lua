@@ -148,7 +148,7 @@ AddEventHandler(
 	end
 )
 
--- Handle receiving tools from the vineyard supervisor. Received after a player presses a key at the 
+-- Handle receiving tools from the vineyard supervisor. Received after a player presses a key at the
 -- supervisor after starting the job
 RegisterNetEvent(VineyardActivityName .. "-client:ReceiveTools")
 AddEventHandler(
@@ -274,7 +274,7 @@ AddEventHandler(
 				end
 
 				-- Don't allow picking if they no longer have their picking knife
-				if (exports["np-activities"]:hasInventoryItem(GetPlayerServerId(PlayerId()), VineyardPickingKnifeName)) then
+				if (not exports["np-activities"]:hasInventoryItem(GetPlayerServerId(PlayerId()), VineyardPickingKnifeName)) then
 					exports["np-activities"]:notifyPlayer(GetPlayerServerId(PlayerId()), "You need to have your tools to pick.")
 					return
 				end
@@ -309,6 +309,12 @@ AddEventHandler(
 
 				-- Play the picking animation
 				exports["np-activities"]:notifyPlayer(GetPlayerServerId(PlayerId()), "Picking...")
+				local knifeEntity = NoPixelAttachEntityToPlayerPed(
+					VineyardPickingKnifePropName,
+					VineyardPickingKnifeHandBoneIndex,
+					VineyardPickingKnifeOffset,
+					VineyardPickingKnifeRotation
+				)
 				NoPixelPlayAnimationOnPlayerPed(
 					VineyardPickAnimDict,
 					VineyardPickAnimName,
@@ -323,6 +329,7 @@ AddEventHandler(
 
 						exports["np-activities"]:notifyPlayer(GetPlayerServerId(PlayerId()), "Cancelled pick attempt.")
 
+						DeleteObject(knifeEntity)
 						ClearPedTasksImmediately(PlayerPedId())
 						IsCurrentlyPicking = false
 
@@ -331,6 +338,8 @@ AddEventHandler(
 
 					Citizen.Wait(100)
 				end
+				
+				DeleteObject(knifeEntity)
 
 				-- Send a request to the server to finish picking at the current pick location
 				-- Increments the current count of picks for this field

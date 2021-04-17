@@ -20,9 +20,9 @@ VineyardRewardWineName = "Wine Bottle"
 
 -- Prop configuration
 VineyardPickingKnifePropName = "prop_knife"
-VineyardPickingKnifeHandBoneIndex = 4215
-VineyardPickingKnifeOffset = vector3(0.0, 0.0, 0.0)
-VineyardPickingKnifeRotation = vector3(0.0, 0.0, 0.0)
+VineyardPickingKnifeHandBoneIndex = 57005
+VineyardPickingKnifeOffset = vector3(0.12, 0.13, 0.08)
+VineyardPickingKnifeRotation = vector3(40.0, 0.0, 0.0)
 
 -- Define the configuration for spawning the job ped and its icon
 VineyardJobPosVector = vector3(-1910.75, 2072.67, 139.38)
