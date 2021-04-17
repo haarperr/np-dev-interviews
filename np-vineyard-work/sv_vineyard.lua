@@ -1,78 +1,42 @@
 -- Handle requests to the server from the client to start a vineyard job
--- Ensures the player is not already working and generates a random set of two fields for them to work
-RegisterNetEvent("np-vineyard-work-server:GetJob")
+-- Generates a random set of two fields for them to work
+RegisterNetEvent(VineyardActivityName .. "-server:StartActivity")
 AddEventHandler(
-	"np-vineyard-work-server:GetJob",
+	VineyardActivityName .. "-server:StartActivity",
 	function()
-		print("np-vineyard-work-server:GetJob " .. source)
-
-		-- Don't let the player start the job twice
-		if (GetIsNoPixelPlayerWorkingJob(source)) then
-			SendNoPixelUiMessage(source, "Already working...")
-			return
-		end
-
-		SetNoPixelPlayerIsWorkingJob(source, true)
-		local groupId = GetNoPixelNewGroupId()
+		local groupId = NoPixelGetNewGroupId()
 
 		-- Generate the random fields to be selected
-		local firstField = GetRandom(1, #VineyardFieldLocations)
-		local secondField = GetRandom(1, #VineyardFieldLocations)
-		while (firstField == secondField) do
-			secondField = GetRandom(1, #VineyardFieldLocations)
+		local firstFieldId = GetRandom(1, #VineyardFieldLocations)
+		while (not (#VineyardFieldLocations[firstFieldId]["Enabled"])) do
+			firstFieldId = GetRandom(1, #VineyardFieldLocations)
+		end
+		local secondFieldId = GetRandom(1, #VineyardFieldLocations)
+		while (firstFieldId == secondFieldId or not (#VineyardFieldLocations[secondFieldId]["Enabled"])) do
+			secondFieldId = GetRandom(1, #VineyardFieldLocations)
 		end
 
-		TriggerClientEvent("np-vineyard-work-client:StartJob", source, groupId, firstField, secondField)
+		TriggerClientEvent(VineyardActivityName .. "-client:StartJob", source, groupId, firstFieldId, secondFieldId)
 
 		-- Populate the group information
-		InitNoPixelWorkingGroup(groupId, firstField, secondField)
-		AddNoPixelPlayerToGroup(source, groupId)
-
-		TriggerClientEvent(
-			"np-vineyard-work-client:MoveToField",
-			source,
-			VineyardCurrentlyWorkingGroups[groupId]["CurrentField"]
-		)
-	end
-)
-
--- Handles requests for players to be added to a group
-RegisterNetEvent("np-vineyard-work-server:AddToGroup")
-AddEventHandler(
-	"np-vineyard-work-server:AddToGroup",
-	function(groupId)
-		if not (DoesNoPixelGroupIdExist(groupId)) then
-			-- Not handling this case as proper groups will be implemented with NP code
-			return
-		end
-
-		AddNoPixelPlayerToGroup(source, groupId)
-
-		-- Send the new group member the move instructions
-		TriggerClientEvent(
-			"np-vineyard-work-client:StartJob",
-			source,
-			VineyardCurrentlyWorkingGroups[groupId]["CurrentField"],
-			VineyardCurrentlyWorkingGroups[groupId]["NextField"]
-		)
-		TriggerClientEvent(
-			"np-vineyard-work-client:MoveToField",
-			source,
-			VineyardCurrentlyWorkingGroups[groupId]["CurrentField"]
-		)
+		VineyardCurrentlyWorkingGroups[groupId] = {
+			["Players"] = {[source] = true},
+			["JobCompleted"] = false,
+			["CurrentField"] = firstFieldId,
+			["NextField"] = secondFieldId,
+			["CurrentPicks"] = 0
+		}
 	end
 )
 
 -- Handles requests from the client to attempt picking at a certain location within a field
 -- Validates that the areas has not already been picked and that the number of total picks
 -- for a given group's field is not already over the limit
-RegisterNetEvent("np-vineyard-work-server:AttemptPick")
+RegisterNetEvent(VineyardActivityName .. "-server:AttemptPick")
 AddEventHandler(
-	"np-vineyard-work-server:AttemptPick",
+	VineyardActivityName .. "-server:AttemptPick",
 	function(groupId, fieldNumber, posX, posY)
-		print("np-vineyard-work-server:AttemptPick " .. source .. groupId .. fieldNumber .. posX .. posY)
-
-		-- Determine which array index to add at
+		-- Determine which array index to add the new pick request at at
 		local nextPickAreaIndex = 1
 		if (VineyardWorkingFieldsStatus[fieldNumber][groupId] ~= nil) then
 			nextPickAreaIndex = #VineyardWorkingFieldsStatus[fieldNumber][groupId] + 1
@@ -95,9 +59,9 @@ AddEventHandler(
 			end
 		end
 
+		-- Send a client event to inform them the pick will not be successful
 		if (failToPick) then
-			TriggerClientEvent("np-vineyard-work-client:FailPickAtLocation", source)
-			SendNoPixelUiMessage(source, "Area has already been picked. Move further down the vines.")
+			TriggerClientEvent(VineyardActivityName .. "-client:FailPickAtLocation", source)
 
 			return
 		end
@@ -111,57 +75,53 @@ AddEventHandler(
 		}
 
 		-- Inform the client the pick attempt is allowed and start the animation and timer
-		TriggerClientEvent("np-vineyard-work-client:PickAtLocation", source, nextPickAreaIndex)
+		TriggerClientEvent(VineyardActivityName .. "-client:PickAtLocation", source, nextPickAreaIndex)
 	end
 )
 
 -- In the event a player cancels the pick attempt themself, reset the in progress state
-RegisterNetEvent("np-vineyard-work-server:CancelPick")
+-- so it will not block at that location
+RegisterNetEvent(VineyardActivityName .. "-server:CancelPick")
 AddEventHandler(
-	"np-vineyard-work-server:CancelPick",
+	VineyardActivityName .. "-server:CancelPick",
 	function(groupId, fieldNumber, pickedAreaIndex)
-		print("np-vineyard-work-server:CancelPick " .. source .. groupId .. fieldNumber .. pickedAreaIndex)
-
 		VineyardWorkingFieldsStatus[fieldNumber][groupId][pickedAreaIndex]["InProgress"] = false
 	end
 )
 
 -- When a client has finished an  allowed pick attempt, update the tracked pick attempt status and determine
 -- if the next step of the job should be started
-RegisterNetEvent("np-vineyard-work-server:FinishPick")
+RegisterNetEvent(VineyardActivityName .. "-server:FinishPick")
 AddEventHandler(
-	"np-vineyard-work-server:FinishPick",
+	VineyardActivityName .. "-server:FinishPick",
 	function(groupId, fieldNumber, pickedAreaIndex)
-		print("np-vineyard-work-server:FinishPick " .. source .. groupId .. fieldNumber .. pickedAreaIndex)
-
-		if not (GetIsNoPixelPlayerWorkingJob(source)) then
-			-- Not handling this case as proper groups will be implemented with NP code
-			return
-		end
-
+		-- When a pick has finished
 		VineyardWorkingFieldsStatus[fieldNumber][groupId][pickedAreaIndex]["InProgress"] = false
 		VineyardWorkingFieldsStatus[fieldNumber][groupId][pickedAreaIndex]["Completed"] = true
-
 		VineyardCurrentlyWorkingGroups[groupId]["CurrentPicks"] = VineyardCurrentlyWorkingGroups[groupId]["CurrentPicks"] + 1
 
-		print("Finishing pick")
-		TriggerClientEvent("np-vineyard-work-client:FinishPickAtLocation", source)
-
-		print("Current picks " .. VineyardCurrentlyWorkingGroups[groupId]["CurrentPicks"])
+		-- Send an ack back to the client and notify them
+		TriggerClientEvent(VineyardActivityName .. "-client:FinishPickAttempt", source)
 
 		-- Job progression logic
 		if
 			(VineyardCurrentlyWorkingGroups[groupId]["CurrentPicks"] >= VineyardRequiredPicksPerField and
 				VineyardCurrentlyWorkingGroups[groupId]["NextField"] ~= nil)
 		 then
-			-- If the # picks requried is met and they are on the first field, move to the second
+			-- If the # picks required is met and they are on the first field, move to the second
 			VineyardCurrentlyWorkingGroups[groupId]["CurrentPicks"] = 0
 
 			-- Don't track this group's field metrics in memory anymore
 			VineyardWorkingFieldsStatus[fieldNumber][groupId] = nil
 
-			-- TODO: Replace this functionality with group based checkpoint to move to next field
-			MoveNoPixelGroupToNextFieldStage(groupId)
+			-- Send the client events to register task completion and start the task to
+			-- move to the next field
+			TriggerClientEvent(VineyardActivityName .. "-client:FinishPickAtField", source)
+			TriggerClientEvent(
+				VineyardActivityName .. "-client:MoveToField",
+				source,
+				VineyardCurrentlyWorkingGroups[groupId]["NextField"]
+			)
 
 			VineyardCurrentlyWorkingGroups[groupId]["NextField"] = nil
 		elseif
@@ -171,35 +131,36 @@ AddEventHandler(
 		 then
 			VineyardCurrentlyWorkingGroups[groupId]["JobCompleted"] = true
 
-			for player, _ in pairs(GetNoPixelPlayersInGroup(groupId)) do
-				TriggerClientEvent("np-vineyard-work-client:FinishAllPicking", player)
-			end
+			-- Send the client events to register task completion and start the task to
+			-- return tools
+			TriggerClientEvent(VineyardActivityName .. "-client:FinishPickAtField", source)
+			TriggerClientEvent(VineyardActivityName .. "-client:FinishAllPicking", source)
 		end
 	end
 )
 
 -- Attempt to complete the job when the player has returned to the NPC and pressed Alt.
 -- Validates the job is in a completed state and then issues rewards to the players in a group.
-RegisterNetEvent("np-vineyard-work-server:FinishJob")
+RegisterNetEvent(VineyardActivityName .. "-server:FinishJob")
 AddEventHandler(
-	"np-vineyard-work-server:FinishJob",
+	VineyardActivityName .. "-server:FinishJob",
 	function(groupId)
-		print("np-vineyard-work-server:FinishJob " .. source .. groupId)
-
 		if not (VineyardCurrentlyWorkingGroups[groupId]["JobCompleted"]) then
-			SendNoPixelUiMessage("Picking has not been completed. Unable to complete the job.")
+			TriggerClientEvent(VineyardActivityName .. "-client:JobFinishedFailure", source)
 			return
 		end
 
-		for player, _ in pairs(GetNoPixelPlayersInGroup(groupId)) do
-			local materialsRewarded = GetRandom(VineyardMinWineReward, VineyardMaxWineReward)
+		local materialsRewarded = GetRandom(VineyardMinWineReward, VineyardMaxWineReward)
+		TriggerClientEvent(VineyardActivityName .. "-client:JobFinished", source, materialsRewarded)
+	end
+)
 
-			TriggerClientEvent("np-vineyard-work-client:JobFinished", player)
-
-			AddRewardItemsToPlayerInventory(player, materialsRewarded)
-
-			SetNoPixelPlayerIsWorkingJob(player, false)
-		end
+-- Disable the specified location on the server side so it will not be randomly assigned
+RegisterNetEvent(VineyardActivityName .. "-server:SetLocationEnabled")
+AddEventHandler(
+	VineyardActivityName .. "-server:SetLocationEnabled",
+	function(locationId, enabled)
+		VineyardFieldLocations[locationId]["Enabled"] = enabled
 	end
 )
 
@@ -209,10 +170,7 @@ AddEventHandler(
 	function(reason)
 		print("Player " .. GetPlayerName(source) .. " dropped (Reason: " .. reason .. ")")
 
-		if (GetIsNoPixelPlayerWorkingJob(source)) then
-			SetNoPixelPlayerIsWorkingJob(source, false)
-			DropNoPixelPlayerFromAnyWorkingGroup(source)
-		end
+		DropNoPixelPlayerFromAnyWorkingGroup(source)
 	end
 )
 

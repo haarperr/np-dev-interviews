@@ -1,38 +1,12 @@
---
-VineyardJobPos = vector3(-1910.75, 2072.67, 139.38)
-VineyardJobPedModel = "a_m_y_busicas_01"
-VineyardJobPedHeading = 140.1
-VineyardTradePos = vector3(-1909.66, 2082.92, 139.38)
-VineyardTradePedModel = ""
-VineyardTradePedHeading = 52.8
-
--- Animation settings
-VineyardJobAnimDict = "anim@heists@ornate_bank@grab_cash"
-VineyardJobAnim = "grab"
-
--- Pick timer
-VineyardJobPickTimeMs = 5000
-
 -- This is designed to be compatible with the np-polyzone
 -- method of creating tracked enterable zones as demonstrated in
 -- DW's 4/12 farmer's market
 exports["bt-polyzone"]:AddCircleZone(
-	"Vineyard.VinesJobPed",
-	VineyardJobPos,
+	"Vineyard.JobPed",
+	VineyardJobPosVector,
 	2.5,
 	{
-		name = "Vineyard.VinesJobPed",
-		minZ = 138.0,
-		maxZ = 141.0
-	}
-)
-
-exports["bt-polyzone"]:AddCircleZone(
-	"Vineyard.VinesTradePed",
-	VineyardTradePos,
-	2.5,
-	{
-		name = "Vineyard.VinesTradePed",
+		name = "Vineyard.JobPed",
 		minZ = 138.0,
 		maxZ = 141.0
 	}

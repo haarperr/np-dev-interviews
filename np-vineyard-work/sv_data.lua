@@ -1,6 +1,3 @@
--- Track currently working players
-VineyardCurrentlyWorkingPlayers = {}
-
 -- Track the stats of a currently working group.
 -- Includes current players associated with a group, the number of current picks
 -- on a field, and field information.
