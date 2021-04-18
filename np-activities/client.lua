@@ -1,5 +1,6 @@
 PlayerIsWorkingActivity = false
 PlayerCurrentActivity = nil
+PlayerCurrentTimeToComplete = 0
 
 PlayerIsWorkingTask = false
 PlayerCurrentTaskName = nil
@@ -16,11 +17,12 @@ end
 
 -- Call this when activity in progress
 -- returns bool
-function activityInProgress(activityName, playerServerId)
+function activityInProgress(activityName, playerServerId, timeToComplete)
 	PlayerIsWorkingActivity = true
 	PlayerCurrentActivity = activityName
+	PlayerCurrentTimeToComplete = timeToComplete
 
-	notifyPlayer(playerServerId, "[ACTIVITY] Started activity " .. activityName .. " for server Id " .. playerServerId)
+	notifyPlayer(playerServerId, "[ACTIVITY] Started activity " .. activityName .. " for server Id " .. playerServerId .. " with time limit " .. timeToComplete)
 end
 
 -- Call this when an activity completes, fails, or is abandoned

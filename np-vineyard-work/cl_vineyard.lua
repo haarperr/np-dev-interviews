@@ -130,8 +130,18 @@ AddEventHandler(
 				CurrentGroupId = groupId
 				CurrentFieldId = firstFieldId
 
+				-- Generate an activity level time limit
+				local activityTimeLimitMs = VineyardActivityTimeMaxMs
+				if (VineyardRandomizeActivityTime) then
+					activityTimeLimitMs = GetRandom(VineyardActivityTimeMinMs, VineyardActivityTimeMaxMs)
+				end
+
 				-- Start the activity tracking in NoPixel code
-				exports["np-activities"]:activityInProgress(VineyardActivityName, GetPlayerServerId(PlayerId()))
+				exports["np-activities"]:activityInProgress(
+					VineyardActivityName,
+					GetPlayerServerId(PlayerId()),
+					activityTimeLimitMs
+				)
 
 				-- Assume that the player can always do the initial task of picking up tools from the supervisor
 				exports["np-activities"]:taskInProgress(
@@ -309,7 +319,8 @@ AddEventHandler(
 
 				-- Play the picking animation
 				exports["np-activities"]:notifyPlayer(GetPlayerServerId(PlayerId()), "Picking...")
-				local knifeEntity = NoPixelAttachEntityToPlayerPed(
+				local knifeEntity =
+					NoPixelAttachEntityToPlayerPed(
 					VineyardPickingKnifePropName,
 					VineyardPickingKnifeHandBoneIndex,
 					VineyardPickingKnifeOffset,
@@ -338,7 +349,7 @@ AddEventHandler(
 
 					Citizen.Wait(100)
 				end
-				
+
 				DeleteObject(knifeEntity)
 
 				-- Send a request to the server to finish picking at the current pick location
@@ -446,9 +457,9 @@ AddEventHandler(
 
 -- In the event the server received a completion request before picking was complete, sent
 -- a failure notification
-RegisterNetEvent(VineyardActivityName .. "-client:JobFinishedFailure")
+RegisterNetEvent(VineyardActivityName .. "-client:JobFinishedPickingNotComplete")
 AddEventHandler(
-	VineyardActivityName .. "-client:JobFinishedFailure",
+	VineyardActivityName .. "-client:JobFinishedPickingNotComplete",
 	function()
 		exports["np-activities"]:notifyPlayer(
 			GetPlayerServerId(PlayerId()),
@@ -458,19 +469,23 @@ AddEventHandler(
 )
 
 -- Once the server has declared a job finished, reset the local tracking variables
+function resetLocationTrackingVars()
+	IsWorkingJob = false
+	CurrentGroupId = 0
+	CurrentFieldId = 0
+	IsPlayerPendingTools = false
+	IsPendingPickAction = false
+	IsCurrentlyPicking = false
+	IsAllPickingFinished = false
+	ClearAllBlipRoutes()
+end
+
 RegisterNetEvent(VineyardActivityName .. "-client:JobFinished")
 AddEventHandler(
 	VineyardActivityName .. "-client:JobFinished",
 	function(materialsRewarded)
 		-- Reset local job tracking variables
-		IsWorkingJob = false
-		CurrentGroupId = 0
-		CurrentFieldId = 0
-		IsPlayerPendingTools = false
-		IsPendingPickAction = false
-		IsCurrentlyPicking = false
-		IsAllPickingFinished = false
-		ClearAllBlipRoutes()
+		resetLocationTrackingVars()
 
 		exports["np-activities"]:activityCompleted(
 			VineyardActivityName,
@@ -480,6 +495,24 @@ AddEventHandler(
 		)
 
 		exports["np-activities"]:giveInventoryItem(GetPlayerServerId(PlayerId()), VineyardRewardWineName, materialsRewarded)
+	end
+)
+
+-- Once a server or client has determined that the activity has been timed out, fail the activity and reset all tracking variables
+-- NOTE: This is not implemented in the np-vineyard-work as it is assumed np-activities will track this on a group level
+RegisterNetEvent(VineyardActivityName .. "-client:JobFinishedTimeout")
+AddEventHandler(
+	VineyardActivityName .. "-client:JobFinishedTimeout",
+	function()
+		-- Reset local job tracking variables
+		resetLocationTrackingVars()
+
+		exports["np-activities"]:activityCompleted(
+			VineyardActivityName,
+			GetPlayerServerId(PlayerId()),
+			false,
+			"Failed to complete the activity within the time limit."
+		)
 	end
 )
 

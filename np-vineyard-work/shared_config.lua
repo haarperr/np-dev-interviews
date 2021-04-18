@@ -34,6 +34,11 @@ VineyardPickAnimDict = "amb@world_human_gardener_plant@male@base"
 VineyardPickAnimName = "base"
 VineyardPickAnimFlags = 17
 
+-- Activity time limit settings
+VineyardActivityTimeMinMs = 300000
+VineyardActivityTimeMaxMs = 1800000
+VineyardRandomizeActivityTime = true
+
 -- Basic configuration of vineyard job picking task
 VineyardRequiredPickTimeMs = 5000
 VineyardRequiredPicksPerField = 5 -- This is intentionally a low amount for testing

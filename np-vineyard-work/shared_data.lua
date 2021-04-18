@@ -89,3 +89,15 @@ VineyardFieldLocations = {
 		["FieldCenterZ"] = 123.3
 	}
 }
+
+-- Generate a random value between two numbers (inclusive)
+local RandomInitialized = false
+function GetRandom(minVal, maxVal)
+	if not RandomInitialized then
+		print("Initializing random")
+		math.randomseed(GetGameTimer())
+		RandomInitialized = true
+	end
+
+	return math.random(minVal, maxVal)
+end

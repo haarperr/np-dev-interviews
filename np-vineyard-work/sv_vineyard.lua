@@ -146,7 +146,7 @@ AddEventHandler(
 	VineyardActivityName .. "-server:FinishJob",
 	function(groupId)
 		if not (VineyardCurrentlyWorkingGroups[groupId]["JobCompleted"]) then
-			TriggerClientEvent(VineyardActivityName .. "-client:JobFinishedFailure", source)
+			TriggerClientEvent(VineyardActivityName .. "-client:JobFinishedPickingNotComplete", source)
 			return
 		end
 
@@ -173,15 +173,3 @@ AddEventHandler(
 		DropNoPixelPlayerFromAnyWorkingGroup(source)
 	end
 )
-
--- Generate a random value between two numbers (inclusive)
-local RandomInitialized = false
-function GetRandom(minVal, maxVal)
-	if not RandomInitialized then
-		print("Initializing random")
-		math.randomseed(GetGameTimer())
-		RandomInitialized = true
-	end
-
-	return math.random(minVal, maxVal)
-end
